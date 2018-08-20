@@ -1,0 +1,146 @@
+---
+title: "Data Wrangling Exercise 1 v2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Getting started
+
+The data is in an Excel file [here](https://drive.google.com/file/d/0B9vKjeWdQHa5OE5UQ1k4TWJlelU/view) called refine.xlsx. Right away, you'll notice that the data set has a few issues:
+
+There are four brands: Philips, Akzo, Van Houten and Unilever. However, there are many different spellings and capitalizations of those names!
+
+The product code and number are combined in one column, separated by a hyphen. 
+
+Exercise
+
+Using R, clean this data set to make it easier to visualize and analyze. Specifically, these are the tasks you need to do: 
+
+```{r refine}
+
+```
+
+### 0: Load the data in RStudio
+
+Save the data set as a CSV file called refine_original.csv and load it in RStudio into a data frame.
+
+  + Downloaded xlsx file from link
+  + Opened R studio and import dataset as xls (no access to xls to convert to CSV format)
+  + Installed tidyr, dplyr, knitr, readxls packages
+
+``` {r eval = TRUE, message = FALSE}
+library(tidyr)
+library(dplyr)
+library(knitr)
+library(readxl)
+refine <- read_excel("Source/refine.xlsx")
+refine
+```
+
+### 1: Clean up brand names
+
+Clean up the 'company' column so all of the misspellings of the brand names are standardized. For example, you can transform the values in the column to be: philips, akzo, van houten and unilever (all lowercase).
+
+  + Selected the company column and turned it into a vector of names
+  + Sorted the list of company names in alpha order to make creating a new dataframe easier
+  + Used the vector to create a dataframe that corresponds to the correct spelling
+  + Used left_join() to create new column with correct company name
+  + Modified columns by using the select() function to get the columns in order
+  + Renamed new column name back to "company"
+
+``` {R eval = TRUE}
+sort_company <- sort(as.vector(as.matrix(refine[,1])))
+sort_company_df <- data_frame(company = sort_company, fixed_company = c("akzo",  "akzo",  "akzo",  "akzo",  "akzo",  "akzo",  "akzo", "philips", "philips", "philips", "philips", "philips", "philips", "philips", "philips", "philips", "van houten",  "van houten",  "van houten",  "van houten",  "van houten", "unilever",  "unilever",  "unilever",  "unilever"))
+refine1 <- left_join(refine, sort_company_df, by = "company")
+refine1_1 <- select(refine1, "fixed_company", "Product code / number", "address", "city", "country", "name")
+names(refine1_1)[names(refine1_1) == "fixed_company"] <- "company"
+```
+``` {R echo = FALSE}
+kable(refine1_1)
+```
+
+### 2: Separate product code and number
+
+Separate the product code and product number into separate columns i.e. add two new columns called product_code and product_number, containing the product code and number respectively
+
+  + Used separate() to separate based on "-"
+  
+``` {R eval = TRUE}
+refine2 <-separate(refine1_1, "Product code / number", c("product_code", "product_number"), sep = "-")
+```
+``` {R echo = FALSE}
+kable(refine2 <-separate(refine1_1, "Product code / number", c("product_code", "product_number"), sep = "-"))
+```
+
+### 3: Add product categories
+
+You learn that the product codes actually represent the following product categories:
+
+  + p = Smartphone
+  + v = TV
+  + x = Laptop
+  + q = Tablet
+
+In order to make the data more readable, add a column with the product category for each record.
+
+  + Created new dataframe to have the product code line up with product category
+  + Used left_join to find matches
+
+``` {R eval = TRUE}
+prod_cod <- data_frame(product_code = c("p", "v", "x", "q"), product_category = c("Smartphone", "TV", "Laptop", "Tablet"))
+```
+``` {R echo = FALSE}
+prod_cod
+```
+``` {R eval = FALSE}
+refine2 <- left_join(refine2, prod_cod, by = "product_code")
+```
+``` {R echo = FALSE}
+kable(refine2 <- left_join(refine2, prod_cod, by = "product_code"))
+```
+
+### 4: Add full address for geocoding
+
+You'd like to view the customer information on a map. In order to do that, the addresses need to be in a form that can be easily geocoded. Create a new column full_address that concatenates the three address fields (address, city, country), separated by commas.
+
+  + Used unite() to combine full address
+
+``` {R eval = FALSE}
+refine2 <- unite(refine2, "full_address", address, city, country, sep = ",")
+```
+``` {R echo = FALSE}
+kable(refine2 <- unite(refine2, "full_address", address, city, country, sep = ","))
+```
+
+### 5: Create dummy variables for company and product category
+
+Both the company name and product category are categorical variables i.e. they take only a fixed set of values. In order to use them in further analysis you need to create dummy variables. Create dummy binary variables for each of them with the prefix company_ and product_ i.e.,
+
+Add four binary (1 or 0) columns for company: company_philips, company_akzo, company_van_houten and company_unilever.
+
+  + Created dataframe for company columns with company names as row 1 and corresponding company columns with binary values
+
+``` {R eval = TRUE}
+(ccode <- data_frame(company = c("philips", "akzo", "van_houten", "unilever"), product_philips = c(1, 0, 0, 0), product_akzo = c(0, 1, 0, 0), product_van_houten = c(0, 0, 1, 0), product_unilever = c(0, 0, 0, 1)))
+refine3 <- left_join(refine2, ccode, by = "company")
+```
+
+Add four binary (1 or 0) columns for product category: product_smartphone, product_tv, product_laptop and product_tablet.
+
+  + Created dataframe for product code columns with product code as row 1 and corresponding product code columns with binary values
+
+``` {R eval = TRUE}
+(pcode <- data_frame(product_code = c("p", "v", "x", "q"), product_smartphone = c(1, 0, 0, 0), product_tv = c(0, 1, 0, 0), product_laptop = c(0, 0, 1, 0), product_tablet = c(0, 0, 0, 1)))
+refine3 <- left_join(refine3, pcode, by = "product_code")
+```
+
+``` {R echo = FALSE}
+kable(refine3)
+```
+
+### 6: Submit the project on Github
+
+Include your code, the original data as a CSV file refine_original.csv, and the cleaned up data as a CSV file called refine_clean.csv.
